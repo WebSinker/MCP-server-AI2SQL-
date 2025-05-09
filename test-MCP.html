@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple NL to SQL Tester</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        textarea, input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        .example {
+            background-color: #f0f0f0;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple NL to SQL Tester</h1>
+    
+    <div class="container">
+        <div>
+            <label for="userId"><strong>User ID:</strong></label>
+            <input type="text" id="userId" value="test_user_1">
+        </div>
+        
+        <div>
+            <strong>Example Queries (click to use):</strong>
+            <div class="example" onclick="setQuery(this.textContent)">Show me all users</div>
+            <div class="example" onclick="setQuery(this.textContent)">List all products that cost more than $100</div>
+            <div class="example" onclick="setQuery(this.textContent)">What's in the Electronics category?</div>
+            <div class="example" onclick="setQuery(this.textContent)">Show me John's orders</div>
+        </div>
+        
+        <div>
+            <label for="query"><strong>Your Query:</strong></label>
+            <textarea id="query" rows="3" placeholder="Type your query here..."></textarea>
+        </div>
+        
+        <button onclick="sendQuery()">Send Query</button>
+        
+        <div>
+            <strong>SQL Generated:</strong>
+            <pre id="sqlResult">Results will appear here...</pre>
+        </div>
+        
+        <div>
+            <strong>Query Results:</strong>
+            <pre id="queryResult">Results will appear here...</pre>
+        </div>
+    </div>
+    
+    <script>
+        function setQuery(text) {
+            document.getElementById('query').value = text;
+        }
+        
+        async function sendQuery() {
+            const query = document.getElementById('query').value.trim();
+            const userId = document.getElementById('userId').value.trim();
+            
+            if (!query || !userId) {
+                alert('Please enter both a query and user ID');
+                return;
+            }
+            
+            const sqlResult = document.getElementById('sqlResult');
+            const queryResult = document.getElementById('queryResult');
+            
+            sqlResult.textContent = 'Loading...';
+            queryResult.textContent = 'Loading...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: query,
+                        userId: userId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    sqlResult.textContent = `Error: ${data.error}`;
+                    queryResult.textContent = data.details || 'No details provided';
+                    return;
+                }
+                
+                // Display SQL
+                sqlResult.textContent = data.sqlQuery || 'No SQL generated';
+                
+                // Display results
+                if (data.results && data.results.rows) {
+                    queryResult.textContent = JSON.stringify(data.results.rows, null, 2);
+                } else {
+                    queryResult.textContent = 'No results found';
+                }
+                
+            } catch (error) {
+                sqlResult.textContent = 'Error contacting server';
+                queryResult.textContent = `Error details: ${error.message}`;
+                
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
