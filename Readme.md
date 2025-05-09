@@ -1,139 +1,207 @@
-# Model Context Protocol Server
+# Natural Language to SQL Converter
 
-A server that converts natural language to SQL queries while maintaining conversational context.
+A web application that converts natural language queries into SQL statements, executes them, and allows you to save and manage the generated SQL scripts directly in MySQL Workbench.
 
-## Features
+![Natural Language to SQL Converter](https://via.placeholder.com/800x400?text=Natural+Language+to+SQL+Converter)
 
-- RESTful API for processing natural language to SQL conversion
-- Context management for follow-up queries
-- Database schema integration for accurate SQL generation
-- SQL validation for security
-- Support for conversational queries
+## 🌟 Features
 
-## Prerequisites
+- **Natural Language Processing**: Convert plain English questions into SQL queries
+- **Context-Aware Queries**: Maintains conversation context for more accurate SQL generation
+- **Direct Execution**: Execute SQL queries against your database
+- **MySQL Workbench Integration**: Save, append, and manage SQL scripts for MySQL Workbench
+- **Script Management**: View, select, and modify existing SQL scripts
+- **User Context Management**: Retains information about previous queries to improve results
 
-- Node.js (v16 or higher)
-- MySQL database and MySQL Workbench
-- Google AI Gemini API key (free tier available)
+## 📋 Table of Contents
 
-## Setup
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [How It Works](#how-it-works)
+- [Project Structure](#project-structure)
+- [API Endpoints](#api-endpoints)
+- [Contributing](#contributing)
+- [License](#license)
+
+## 🔧 Installation
+
+### Prerequisites
+
+- Node.js (v14 or higher)
+- MySQL Server and MySQL Workbench
+- Google Cloud account for Gemini API access
+
+### Steps
 
 1. Clone the repository:
+
 ```bash
-git clone https://github.com/yourusername/model-context-protocol-server.git
-cd model-context-protocol-server
+git clone https://github.com/yourusername/natural-language-to-sql.git
+cd natural-language-to-sql
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
-3. Create a `.env` file in the root directory with the following environment variables:
-```
-GEMINI_API_KEY=your_gemini_api_key
-DB_USER=postgres_user
-DB_HOST=localhost
-DB_NAME=your_database_name
-DB_PASSWORD=your_database_password
-DB_PORT=5432
-PORT=3000
-```
+3. Create a `.env` file with your configuration:
 
-4. Getting a Gemini API Key:
-   - Go to [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Sign in with your Google account
-   - Click on "Get API key" or "Create API key"
-   - The free tier includes up to 60 queries per minute
+```bash
+# MySQL Database Configuration
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=your_database
+DB_PORT=3306
+
+# Gemini API Key
+GEMINI_API_KEY=your_gemini_api_key
+
+# MySQL Workbench Configuration
+MYSQL_WORKBENCH_PATH=/path/to/mysql/workbench/executable
+# For Windows: MYSQL_WORKBENCH_PATH=C:\\Program Files\\MySQL\\MySQL Workbench 8.0\\mysqlworkbench.exe
+# For Mac: MYSQL_WORKBENCH_PATH=/Applications/MySQLWorkbench.app/Contents/MacOS/MySQLWorkbench
+# For Linux: MYSQL_WORKBENCH_PATH=/usr/bin/mysql-workbench
+
+# MySQL CLI Path (for direct execution)
+MYSQL_CLI_PATH=mysql
+
+# Directory to store SQL scripts
+SCRIPTS_DIRECTORY=./sql_scripts
+```
 
 4. Start the server:
+
 ```bash
-npm start
+node server.js
 ```
 
-## API Usage
+5. Open `test-MCP.html` in your web browser, or serve it using a static file server:
 
-### Convert Natural Language to SQL
+```bash
+npx serve .
+```
 
-**Endpoint:** `POST /query`
+## ⚙️ Configuration
 
-**Request Body:**
+### Database Schema
+
+The application is configured with a default schema that includes:
+- Users
+- Products
+- Categories
+- Orders
+- Order items
+
+To customize the schema, modify the prompt in `nlToSqlConverter.js`.
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB_HOST` | MySQL server hostname | localhost |
+| `DB_USER` | MySQL username | root |
+| `DB_PASSWORD` | MySQL password | your_password |
+| `DB_NAME` | MySQL database name | your_database |
+| `DB_PORT` | MySQL server port | 3306 |
+| `GEMINI_API_KEY` | Google Gemini API key | - |
+| `MYSQL_WORKBENCH_PATH` | Path to MySQL Workbench executable | - |
+| `MYSQL_CLI_PATH` | Path to MySQL CLI executable | mysql |
+| `SCRIPTS_DIRECTORY` | Directory to store SQL scripts | ./sql_scripts |
+
+## 🚀 Usage
+
+1. Enter your question in natural language (e.g., "Show me all users who made purchases in the last month")
+2. Click "Convert to SQL" to generate the SQL query
+3. Review the generated SQL and results
+4. Click "Apply to MySQL Workbench" to save the query
+5. Optionally, view existing scripts by clicking "List Existing Scripts"
+6. Select an existing script or enter a new name
+7. Click "Confirm" to save the SQL script
+
+### Example Queries
+
+- "Create a table named students with columns for ID, name, email, and enrollment date"
+- "Show me all products with price greater than $50"
+- "Find the total revenue from orders in the last quarter"
+- "List the top 5 customers by order total"
+- "Create a view that shows product sales by category"
+
+## 🔍 How It Works
+
+1. **Natural Language Processing**: The application uses Google's Gemini AI model to convert natural language into SQL queries.
+2. **Context Management**: Previous queries and results are stored to maintain context for follow-up questions.
+3. **SQL Execution**: Generated SQL is executed against your MySQL database.
+4. **MySQL Workbench Integration**: Generated SQL can be saved as script files that can be opened in MySQL Workbench or executed directly via the MySQL CLI.
+
+### SQL Script Management
+
+- **New Scripts**: When saving a new script, the system creates a file with metadata headers.
+- **Existing Scripts**: When appending to an existing script, the system preserves the original content and adds the new query with a timestamp separator.
+- **Script Organization**: All scripts are stored in the configured `SCRIPTS_DIRECTORY`.
+
+## 📁 Project Structure
+
+```
+natural-language-to-sql/
+├── server.js              # Main server file
+├── nlToSqlConverter.js    # Converts natural language to SQL
+├── dbConnector.js         # Database connection and query execution
+├── contextManager.js      # Manages user context and query history
+├── mysqlWorkbenchConnector.js # MySQL Workbench integration
+├── test-MCP.html          # Frontend interface
+├── .env                   # Environment configuration
+├── sql_scripts/           # Generated SQL scripts
+└── README.md              # This file
+```
+
+## 📝 API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/query` | POST | Convert natural language to SQL and execute it |
+| `/schema` | GET | Get database schema information |
+| `/apply-to-workbench` | POST | Save SQL query to a file for MySQL Workbench |
+| `/list-scripts` | GET | List existing SQL scripts |
+
+### `/query` Endpoint
+
 ```json
 {
-  "text": "Show me all users who ordered products in the Electronics category last month",
+  "text": "Show me all users who registered last month",
   "userId": "user123"
 }
 ```
 
-**Response:**
+### `/apply-to-workbench` Endpoint
+
 ```json
 {
-  "sqlQuery": "SELECT u.name, u.email FROM users u JOIN orders o ON u.id = o.user_id JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id JOIN categories c ON p.category_id = c.id WHERE c.name = 'Electronics' AND o.created_at >= date_trunc('month', current_date - interval '1 month') AND o.created_at < date_trunc('month', current_date)",
-  "results": {
-    "rows": [
-      { "name": "John Doe", "email": "john@example.com" },
-      { "name": "Jane Smith", "email": "jane@example.com" }
-    ],
-    "rowCount": 2,
-    "fields": [
-      { "name": "name", "dataType": 25 },
-      { "name": "email", "dataType": 25 }
-    ]
-  },
-  "context": {
-    "userId": "user123",
-    "createdAt": "2023-01-01T12:00:00.000Z",
-    "updatedAt": "2023-01-01T12:05:00.000Z",
-    "sessionEntities": {},
-    "queryHistory": [
-      {
-        "query": "Show me all users who ordered products in the Electronics category last month",
-        "sql": "SELECT u.name, u.email FROM users u JOIN orders o ON u.id = o.user_id JOIN order_items oi ON o.id = oi.order_id JOIN products p ON oi.product_id = p.id JOIN categories c ON p.category_id = c.id WHERE c.name = 'Electronics' AND o.created_at >= date_trunc('month', current_date - interval '1 month') AND o.created_at < date_trunc('month', current_date)",
-        "timestamp": "2023-01-01T12:05:00.000Z"
-      }
-    ]
-  }
+  "sqlQuery": "SELECT * FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)",
+  "userId": "user123",
+  "scriptName": "monthly_reports.sql"
 }
 ```
 
-### Get Database Schema
+## 🤝 Contributing
 
-**Endpoint:** `GET /schema`
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-**Response:**
-```json
-{
-  "tables": [
-    {
-      "name": "users",
-      "columns": ["id", "name", "email", "created_at"]
-    },
-    {
-      "name": "products",
-      "columns": ["id", "name", "price", "category_id"]
-    }
-  ]
-}
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## Architecture
+## 📄 License
 
-The server consists of the following components:
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-1. **Express API Server** - Handles incoming HTTP requests
-2. **NL-to-SQL Converter** - Uses OpenAI's API to convert natural language to SQL
-3. **Database Connector** - Executes SQL queries against a PostgreSQL database
-4. **Context Manager** - Maintains conversation state for follow-up queries
+## 🙏 Acknowledgements
 
-## Security Considerations
-
-- The server includes basic SQL validation to prevent SQL injection
-- Implement authentication and authorization for production use
-- Consider rate limiting to prevent abuse
-
-## Extensions
-
-- Add support for more database types (MySQL, SQLite, etc.)
-- Implement a caching layer for common queries
-- Add support for database migrations
-- Create a web interface for testing natural language queries
+- [Google Generative AI](https://cloud.google.com/vertex-ai/generative-ai) for the Gemini model
+- [Express.js](https://expressjs.com/) for the server framework
+- [MySQL](https://www.mysql.com/) for the database
