@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple NL to SQL Tester</title>
+    <title>Natural Language to SQL Converter</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -55,35 +55,57 @@
             border-radius: 4px;
             cursor: pointer;
         }
+        .input-container {
+            margin: 20px 0;
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        .submit-button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .submit-button:hover {
+            background-color: #45a049;
+        }
     </style>
 </head>
 <body>
-    <h1>Simple NL to SQL Tester</h1>
+    <h1>Natural Language to SQL Converter</h1>
     
     <div class="container">
         <div>
             <label for="userId"><strong>User ID:</strong></label>
-            <input type="text" id="userId" value="test_user_1">
+            <input type="text" id="userId" value="test_user_1" class="input-field">
         </div>
         
-        <div>
-            <strong>Example Queries (click to use):</strong>
-            <div class="example" onclick="setQuery(this.textContent)">Show me all users</div>
-            <div class="example" onclick="setQuery(this.textContent)">List all products that cost more than $100</div>
-            <div class="example" onclick="setQuery(this.textContent)">What's in the Electronics category?</div>
-            <div class="example" onclick="setQuery(this.textContent)">Show me John's orders</div>
+        <div class="input-container">
+            <label for="userInput"><strong>Enter your question:</strong></label>
+            <textarea 
+                id="userInput" 
+                class="input-field" 
+                rows="4" 
+                placeholder="Example: Show me all users who made purchases in the last month"
+            ></textarea>
         </div>
         
-        <div>
-            <label for="query"><strong>Your Query:</strong></label>
-            <textarea id="query" rows="3" placeholder="Type your query here..."></textarea>
-        </div>
-        
-        <button onclick="sendQuery()">Send Query</button>
+        <button class="submit-button" onclick="processUserInput()">Convert to SQL</button>
         
         <div>
-            <strong>SQL Generated:</strong>
-            <pre id="sqlResult">Results will appear here...</pre>
+            <strong>Generated SQL:</strong>
+            <pre id="sqlResult">SQL query will appear here...</pre>
         </div>
         
         <div>
@@ -93,24 +115,20 @@
     </div>
     
     <script>
-        function setQuery(text) {
-            document.getElementById('query').value = text;
-        }
-        
-        async function sendQuery() {
-            const query = document.getElementById('query').value.trim();
+        async function processUserInput() {
+            const userInput = document.getElementById('userInput').value.trim();
             const userId = document.getElementById('userId').value.trim();
             
-            if (!query || !userId) {
-                alert('Please enter both a query and user ID');
+            if (!userInput || !userId) {
+                alert('Please enter both a question and user ID');
                 return;
             }
             
             const sqlResult = document.getElementById('sqlResult');
             const queryResult = document.getElementById('queryResult');
             
-            sqlResult.textContent = 'Loading...';
-            queryResult.textContent = 'Loading...';
+            sqlResult.textContent = 'Processing...';
+            queryResult.textContent = 'Waiting for SQL execution...';
             
             try {
                 const response = await fetch('http://localhost:3000/query', {
@@ -119,7 +137,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        text: query,
+                        text: userInput,
                         userId: userId
                     })
                 });
@@ -132,10 +150,8 @@
                     return;
                 }
                 
-                // Display SQL
                 sqlResult.textContent = data.sqlQuery || 'No SQL generated';
                 
-                // Display results
                 if (data.results && data.results.rows) {
                     queryResult.textContent = JSON.stringify(data.results.rows, null, 2);
                 } else {
@@ -145,7 +161,6 @@
             } catch (error) {
                 sqlResult.textContent = 'Error contacting server';
                 queryResult.textContent = `Error details: ${error.message}`;
-                
                 console.error('Error:', error);
             }
         }
