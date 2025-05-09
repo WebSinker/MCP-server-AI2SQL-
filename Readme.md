@@ -2,7 +2,7 @@
 
 A web application that converts natural language queries into SQL statements, executes them, and allows you to save and manage the generated SQL scripts directly in MySQL Workbench.
 
-![Natural Language to SQL Converter](https://via.placeholder.com/800x400?text=Natural+Language+to+SQL+Converter)
+![Natural Language to SQL Converter]
 
 ## 🌟 Features
 
