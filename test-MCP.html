@@ -1,3 +1,4 @@
+<!-- Updated HTML with MySQL Workbench integration -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,9 +77,31 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
+            margin-bottom: 10px;
         }
         .submit-button:hover {
             background-color: #45a049;
+        }
+        .workbench-button {
+            width: 100%;
+            padding: 12px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .workbench-button:hover {
+            background-color: #0b7dda;
+        }
+        .button-container {
+            display: flex;
+            gap: 10px;
+        }
+        .script-name-container {
+            margin-top: 10px;
+            display: none;
         }
     </style>
 </head>
@@ -108,13 +131,38 @@
             <pre id="sqlResult">SQL query will appear here...</pre>
         </div>
         
+        <div class="button-container">
+            <button class="workbench-button" id="applyToWorkbench" onclick="showScriptNameInput()" disabled>Apply to MySQL Workbench</button>
+        </div>
+        
+        <div class="script-name-container" id="scriptNameContainer">
+            <input type="text" id="scriptName" class="input-field" placeholder="Enter script name (optional)">
+            <div style="margin: 10px 0; display: flex; gap: 10px;">
+                <button class="submit-button" onclick="applyToWorkbench()">Confirm</button>
+                <button class="workbench-button" style="background-color: #607d8b;" onclick="listExistingScripts()">List Existing Scripts</button>
+            </div>
+            <div id="existingScriptsList" style="margin-top: 10px; display: none;">
+                <h3>Existing Scripts:</h3>
+                <div id="scriptsList" style="max-height: 200px; overflow-y: auto; background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
+                    Loading scripts...
+                </div>
+            </div>
+        </div>
+        
         <div>
             <strong>Query Results:</strong>
             <pre id="queryResult">Results will appear here...</pre>
         </div>
+        
+        <div>
+            <strong>Workbench Status:</strong>
+            <pre id="workbenchStatus">Not applied to workbench yet</pre>
+        </div>
     </div>
     
     <script>
+        let currentSqlQuery = '';
+        
         async function processUserInput() {
             const userInput = document.getElementById('userInput').value.trim();
             const userId = document.getElementById('userId').value.trim();
@@ -126,9 +174,11 @@
             
             const sqlResult = document.getElementById('sqlResult');
             const queryResult = document.getElementById('queryResult');
+            const applyButton = document.getElementById('applyToWorkbench');
             
             sqlResult.textContent = 'Processing...';
             queryResult.textContent = 'Waiting for SQL execution...';
+            applyButton.disabled = true;
             
             try {
                 const response = await fetch('http://localhost:3000/query', {
@@ -150,7 +200,8 @@
                     return;
                 }
                 
-                sqlResult.textContent = data.sqlQuery || 'No SQL generated';
+                currentSqlQuery = data.sqlQuery || '';
+                sqlResult.textContent = currentSqlQuery;
                 
                 if (data.results && data.results.rows) {
                     queryResult.textContent = JSON.stringify(data.results.rows, null, 2);
@@ -158,9 +209,132 @@
                     queryResult.textContent = 'No results found';
                 }
                 
+                // Enable the apply to workbench button if we have SQL
+                if (currentSqlQuery) {
+                    applyButton.disabled = false;
+                }
+                
             } catch (error) {
                 sqlResult.textContent = 'Error contacting server';
                 queryResult.textContent = `Error details: ${error.message}`;
+                console.error('Error:', error);
+            }
+        }
+        
+        function showScriptNameInput() {
+            document.getElementById('scriptNameContainer').style.display = 'block';
+        }
+        
+        async function listExistingScripts() {
+            const scriptsList = document.getElementById('scriptsList');
+            const existingScriptsList = document.getElementById('existingScriptsList');
+            
+            existingScriptsList.style.display = 'block';
+            scriptsList.textContent = 'Loading scripts...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/list-scripts');
+                const data = await response.json();
+                
+                if (data.error) {
+                    scriptsList.textContent = `Error: ${data.error}`;
+                    return;
+                }
+                
+                if (data.scripts && data.scripts.length > 0) {
+                    // Create a nice list of scripts with information
+                    let scriptsHtml = '';
+                    
+                    data.scripts.forEach(script => {
+                        const modified = new Date(script.modified).toLocaleString();
+                        const size = formatBytes(script.size);
+                        
+                        scriptsHtml += `
+                        <div style="padding: 8px; border-bottom: 1px solid #ddd; cursor: pointer;" 
+                             onclick="selectScript('${script.name}')">
+                            <strong>${script.name}</strong><br>
+                            <small>Modified: ${modified} | Size: ${size}</small>
+                        </div>`;
+                    });
+                    
+                    scriptsList.innerHTML = scriptsHtml;
+                } else {
+                    scriptsList.textContent = 'No SQL scripts found.';
+                }
+            } catch (error) {
+                scriptsList.textContent = `Error loading scripts: ${error.message}`;
+                console.error('Error:', error);
+            }
+        }
+        
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+        
+        function selectScript(scriptName) {
+            document.getElementById('scriptName').value = scriptName;
+        }
+        
+        async function applyToWorkbench() {
+            if (!currentSqlQuery) {
+                alert('No SQL query to apply');
+                return;
+            }
+            
+            const userId = document.getElementById('userId').value.trim();
+            const scriptName = document.getElementById('scriptName').value.trim();
+            const workbenchStatus = document.getElementById('workbenchStatus');
+            
+            workbenchStatus.textContent = 'Applying to MySQL Workbench...';
+            
+            try {
+                const response = await fetch('http://localhost:3000/apply-to-workbench', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sqlQuery: currentSqlQuery,
+                        userId: userId,
+                        scriptName: scriptName || null
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    workbenchStatus.textContent = `Error: ${data.error}\nDetails: ${data.details || 'No details provided'}`;
+                    return;
+                }
+                
+                // Create a more user-friendly status message
+                let statusMessage = `Success: ${data.message}\n\n`;
+                
+                if (data.details && data.details.fileAction) {
+                    const action = data.details.fileAction === 'appended' ? 'appended to' : 'created as';
+                    statusMessage += `Your SQL query was ${action} the file: ${data.details.scriptPath}\n\n`;
+                    
+                    // If it was appended, provide a helpful note
+                    if (data.details.fileAction === 'appended') {
+                        statusMessage += "Note: Your query was added to the end of the existing file with a timestamp separator.\n\n";
+                    }
+                }
+                
+                // Add additional details
+                statusMessage += `Details: ${JSON.stringify(data.details, null, 2)}`;
+                
+                workbenchStatus.textContent = statusMessage;
+                
+            } catch (error) {
+                workbenchStatus.textContent = `Error applying to MySQL Workbench: ${error.message}`;
                 console.error('Error:', error);
             }
         }
