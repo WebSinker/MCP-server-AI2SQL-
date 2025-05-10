@@ -1,4 +1,5 @@
 // File: test-mcp-server.js
+// test the MCP server
 const axios = require('axios');
 const assert = require('assert');
 
