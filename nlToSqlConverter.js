@@ -1,5 +1,6 @@
 // File: nlToSqlConverter.js
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { validateNaturalLanguageInput, validateSql, assessSensitiveDataRequest } = require('./securityFilter');
 require('dotenv').config();
 
 // Add debug logging
@@ -14,6 +15,28 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // Function to process natural language and convert to SQL
 async function processNaturalLanguage(text, userContext = {}) {
   try {
+    // STEP 1: Security check for natural language input
+    const inputValidation = validateNaturalLanguageInput(text);
+    
+    if (!inputValidation.isValid) {
+      return {
+        sqlQuery: null,
+        entities: [],
+        intent: 'SECURITY_BLOCKED',
+        error: inputValidation.reason,
+        securityAlert: {
+          type: 'input_validation',
+          severity: inputValidation.severity,
+          details: inputValidation.reason
+        }
+      };
+    }
+    
+    // Add security warning to context if present
+    if (inputValidation.warning) {
+      console.warn(`Security warning for query: ${text} - ${inputValidation.warning}`);
+    }
+
     // Create a prompt that includes database schema information
     const prompt = `
 You are an expert SQL translator that converts natural language queries into MySQL SQL statements.
@@ -34,8 +57,18 @@ Columns: id (int, primary key, auto_increment), user_id (int, foreign key), crea
 Table: order_items
 Columns: id (int, primary key, auto_increment), order_id (int, foreign key), product_id (int, foreign key), quantity (int), price (decimal(10,2))
 
+SECURITY REQUIREMENTS:
+1. ONLY generate SELECT queries - NEVER generate INSERT, UPDATE, DELETE, DROP, CREATE, ALTER or any other data modification or schema modification queries.
+2. Do not use multiple SQL statements separated by semicolons.
+3. Avoid any syntax that might be used for SQL injection attacks.
+4. Do not reference tables or columns that don't exist in the schema.
+5. For security reasons, never include literals that look like SQL injection attempts, even if they appear in the user's question.
+6. Do NOT use UNION SELECT unless absolutely necessary.
+7. Never generate queries that would directly retrieve sensitive data like passwords.
+8. If asked for sensitive information, generate a statistical query instead.
+
 Your task is to:
-1. Convert the user's natural language query into a valid SQL query
+1. Convert the user's natural language query into a valid MySQL SELECT query
 2. Extract entities mentioned in the query
 3. Identify the user's intent
 
@@ -65,9 +98,9 @@ Current query: ${text}
     // Get the Gemini Pro model
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-    // Configure generation options
+    // Configure generation options - lower temperature for more deterministic outputs
     const generationConfig = {
-      temperature: 0.2,
+      temperature: 0.1,  // Reduced from 0.2 for more predictable outputs
       topP: 0.8,
       topK: 40
     };
@@ -82,7 +115,7 @@ Current query: ${text}
         },
         {
           role: "model",
-          parts: [{ text: "I understand. I will convert natural language queries to SQL based on the provided schema." }]
+          parts: [{ text: "I understand. I will convert natural language queries to secure SQL SELECT statements based on the provided schema." }]
         }
       ]
     });
@@ -110,34 +143,47 @@ Current query: ${text}
       throw new Error("Failed to extract JSON from the model response");
     }
     
-    // Validate SQL to prevent injection (basic validation)
-    validateSql(parsedResult.sqlQuery);
+    // STEP 2: Validate the generated SQL for security issues
+    if (parsedResult.sqlQuery) {
+      const sqlValidation = validateSql(parsedResult.sqlQuery);
+      
+      if (!sqlValidation.isValid) {
+        return {
+          sqlQuery: null,
+          entities: parsedResult.entities || [],
+          intent: 'SECURITY_BLOCKED',
+          error: sqlValidation.reason,
+          securityAlert: {
+            type: 'sql_validation',
+            severity: sqlValidation.severity,
+            details: sqlValidation.reason
+          }
+        };
+      }
+      
+      // STEP 3: Check if the query is trying to access sensitive data
+      const sensitiveDataAssessment = assessSensitiveDataRequest(text, parsedResult.sqlQuery);
+      
+      if (sensitiveDataAssessment.isSensitive && !sensitiveDataAssessment.isLegitimate) {
+        return {
+          sqlQuery: null,
+          entities: parsedResult.entities || [],
+          intent: 'SECURITY_BLOCKED',
+          error: sensitiveDataAssessment.reason,
+          securityAlert: {
+            type: 'sensitive_data_access',
+            severity: 'high',
+            details: sensitiveDataAssessment.reason
+          }
+        };
+      }
+    }
     
     return parsedResult;
   } catch (error) {
     console.error('Error in NL to SQL conversion:', error);
     throw new Error(`Failed to convert natural language to SQL: ${error.message}`);
   }
-}
-
-// Basic SQL validation function - this should be enhanced for production
-function validateSql(sql) {
-  // Check for dangerous SQL commands
-  const dangerousCommands = ['DROP', 'DELETE', 'TRUNCATE', 'UPDATE', 'INSERT', 'ALTER', 'GRANT', 'REVOKE'];
-  
-  for (const command of dangerousCommands) {
-    if (sql.toUpperCase().includes(command)) {
-      // For data modification, you might want to allow these but with user confirmation
-      if (['UPDATE', 'INSERT', 'DELETE'].includes(command)) {
-        console.warn(`SQL contains potentially destructive command: ${command}`);
-      } else {
-        throw new Error(`SQL contains forbidden command: ${command}`);
-      }
-    }
-  }
-  
-  // Add more validation as needed
-  return true;
 }
 
 module.exports = {
