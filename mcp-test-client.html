@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP Server Test Client</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h1, h2 {
+            color: #2c3e50;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .tool-btn {
+            background-color: #2ecc71;
+        }
+        .tool-btn:hover {
+            background-color: #27ae60;
+        }
+        .clear-btn {
+            background-color: #e74c3c;
+        }
+        .clear-btn:hover {
+            background-color: #c0392b;
+        }
+        .context-btn {
+            background-color: #9b59b6;
+        }
+        .context-btn:hover {
+            background-color: #8e44ad;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            margin-top: 8px;
+        }
+        .message-list {
+            margin-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        .message.user {
+            background-color: #e3f2fd;
+            margin-left: 20px;
+        }
+        .message.assistant {
+            background-color: #e8f5e9;
+            margin-right: 20px;
+        }
+        .buttons-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 15px;
+        }
+        .tab-button {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: none;
+            transition: 0.3s;
+            font-weight: 600;
+        }
+        .tab-button:hover {
+            background-color: #ddd;
+        }
+        .tab-button.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+            animation: fadeEffect 1s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeEffect {
+            from {opacity: 0;}
+            to {opacity: 1;}
+        }
+    </style>
+</head>
+<body>
+    <h1>MCP Server Test Client</h1>
+    
+    <div class="panel">
+        <label for="userId">User ID:</label>
+        <input type="text" id="userId" value="test_user_123">
+        
+        <label for="serverUrl">Server URL:</label>
+        <input type="text" id="serverUrl" value="http://localhost:3000">
+        
+        <div class="buttons-row">
+            <button id="getToolsBtn">Load Available Tools</button>
+            <button id="clearContextBtn" class="clear-btn">Clear Context</button>
+            <button id="getContextBtn" class="context-btn">View Current Context</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="panel">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="openTab(event, 'chatTab')">Chat</button>
+                <button class="tab-button" onclick="openTab(event, 'directToolTab')">Direct Tool Call</button>
+                <button class="tab-button" onclick="openTab(event, 'contextTab')">Context Management</button>
+            </div>
+            
+            <!-- Chat Tab -->
+            <div id="chatTab" class="tab-content active">
+                <h2>Chat with MCP</h2>
+                
+                <div class="message-list" id="messageList">
+                    <!-- Messages will be added here -->
+                </div>
+                
+                <textarea id="userMessage" placeholder="Type your message here..."></textarea>
+                
+                <button id="sendMessageBtn">Send Message</button>
+            </div>
+            
+            <!-- Direct Tool Call Tab -->
+            <div id="directToolTab" class="tab-content">
+                <h2>Direct Tool Execution</h2>
+                
+                <label for="toolSelect">Select Tool:</label>
+                <select id="toolSelect">
+                    <option value="">-- Select a tool --</option>
+                </select>
+                
+                <label for="toolParams">Tool Parameters (JSON):</label>
+                <textarea id="toolParams" placeholder='{"param1": "value1", "param2": "value2"}'></textarea>
+                
+                <button id="executeToolBtn" class="tool-btn">Execute Tool</button>
+            </div>
+            
+            <!-- Context Management Tab -->
+            <div id="contextTab" class="tab-content">
+                <h2>Context Management</h2>
+                
+                <label for="contextAction">Action:</label>
+                <select id="contextAction">
+                    <option value="get">Get Context</option>
+                    <option value="update">Update Context</option>
+                    <option value="clear">Clear Context</option>
+                </select>
+                
+                <div id="updateContextDiv">
+                    <label for="contextData">Context Data (JSON):</label>
+                    <textarea id="contextData" placeholder='{"sessionEntities": {"entity1": "value1"}, "memoryBlocks": [{"content": "Important info"}]}'></textarea>
+                </div>
+                
+                <button id="contextActionBtn" class="context-btn">Execute Action</button>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>Response</h2>
+            <pre id="responseOutput">Response will appear here...</pre>
+        </div>
+    </div>
+    
+    <script>
+        // Global state
+        const state = {
+            messages: [],
+            tools: [],
+            userId: 'test_user_123'
+        };
+        
+        // DOM Elements
+        const elements = {
+            userId: document.getElementById('userId'),
+            serverUrl: document.getElementById('serverUrl'),
+            messageList: document.getElementById('messageList'),
+            userMessage: document.getElementById('userMessage'),
+            sendMessageBtn: document.getElementById('sendMessageBtn'),
+            responseOutput: document.getElementById('responseOutput'),
+            getToolsBtn: document.getElementById('getToolsBtn'),
+            toolSelect: document.getElementById('toolSelect'),
+            toolParams: document.getElementById('toolParams'),
+            executeToolBtn: document.getElementById('executeToolBtn'),
+            clearContextBtn: document.getElementById('clearContextBtn'),
+            getContextBtn: document.getElementById('getContextBtn'),
+            contextAction: document.getElementById('contextAction'),
+            contextData: document.getElementById('contextData'),
+            contextActionBtn: document.getElementById('contextActionBtn'),
+            updateContextDiv: document.getElementById('updateContextDiv')
+        };
+        
+        // Tab functionality
+        function openTab(evt, tabName) {
+            const tabContents = document.getElementsByClassName('tab-content');
+            for (let i = 0; i < tabContents.length; i++) {
+                tabContents[i].classList.remove('active');
+            }
+            
+            const tabButtons = document.getElementsByClassName('tab-button');
+            for (let i = 0; i < tabButtons.length; i++) {
+                tabButtons[i].classList.remove('active');
+            }
+            
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+        
+        // Helper function to get base URL
+        function getBaseUrl() {
+            return elements.serverUrl.value.trim();
+        }
+        
+        // Helper function to get user ID
+        function getUserId() {
+            return elements.userId.value.trim() || state.userId;
+        }
+        
+        // Display formatted JSON in the response output
+        function displayResponse(data) {
+            elements.responseOutput.textContent = JSON.stringify(data, null, 2);
+        }
+        
+        // Add a message to the message list
+        function addMessageToList(content, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', role);
+            messageDiv.textContent = content;
+            elements.messageList.appendChild(messageDiv);
+            elements.messageList.scrollTop = elements.messageList.scrollHeight;
+        }
+        
+        // Send a chat message
+        async function sendChatMessage() {
+            const content = elements.userMessage.value.trim();
+            if (!content) return;
+            
+            const userId = getUserId();
+            
+            // Add user message to UI
+            addMessageToList(content, 'user');
+            
+            // Add message to state
+            state.messages.push({
+                role: 'user',
+                content
+            });
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId,
+                        messages: state.messages,
+                        stream: false
+                    })
+                });
+                
+                const data = await response.json();
+                displayResponse(data);
+                
+                // Extract assistant message
+                if (data.choices && data.choices.length > 0) {
+                    const assistantMessage = data.choices[0].message;
+                    state.messages.push(assistantMessage);
+                    
+                    // Add assistant message to UI
+                    addMessageToList(assistantMessage.content, 'assistant');
+                }
+                
+                // Clear input
+                elements.userMessage.value = '';
+                
+            } catch (error) {
+                console.error('Error sending message:', error);
+                displayResponse({ error: error.message });
+            }
+        }
+        
+        // Load available tools
+        async function loadTools() {
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/tools`);
+                const data = await response.json();
+                
+                displayResponse(data);
+                
+                // Update tools state
+                state.tools = data.tools || [];
+                
+                // Populate tool select dropdown
+                elements.toolSelect.innerHTML = '<option value="">-- Select a tool --</option>';
+                
+                state.tools.forEach(tool => {
+                    const option = document.createElement('option');
+                    option.value = tool.name;
+                    option.textContent = `${tool.name} - ${tool.description}`;
+                    elements.toolSelect.appendChild(option);
+                });
+                
+            } catch (error) {
+                console.error('Error loading tools:', error);
+                displayResponse({ error: error.message });
+            }
+        }
+        
+        // Execute a tool directly
+        async function executeTool() {
+            const toolName = elements.toolSelect.value;
+            if (!toolName) {
+                alert('Please select a tool');
+                return;
+            }
+            
+            let parameters;
+            try {
+                parameters = JSON.parse(elements.toolParams.value);
+            } catch (error) {
+                alert('Invalid JSON for parameters');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/tools/${toolName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: getUserId(),
+                        parameters
+                    })
+                });
+                
+                const data = await response.json();
+                displayResponse(data);
+                
+            } catch (error) {
+                console.error('Error executing tool:', error);
+                displayResponse({ error: error.message });
+            }
+        }
+        
+        // Clear user context
+        async function clearContext() {
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/context/${getUserId()}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'clear'
+                    })
+                });
+                
+                const data = await response.json();
+                displayResponse(data);
+                
+                // Clear local message history
+                state.messages = [];
+                elements.messageList.innerHTML = '';
+                
+            } catch (error) {
+                console.error('Error clearing context:', error);
+                displayResponse({ error: error.message });
+            }
+        }
+        
+        // Get user context
+        async function getContext() {
+            try {
+                const response = await fetch(`${getBaseUrl()}/api/v1/context/${getUserId()}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'get'
+                    })
+                });
+                
+                const data = await response.json();
+                displayResponse(data);
+                
+            } catch (error) {
+                console.error('Error getting context:', error);
+                displayResponse({ error: error.message });
+            }
+        }
+        
+        // Execute context action
+        async function executeContextAction() {
+            const action = elements.contextAction.value;
+            
+            try {
+                let requestBody = { action };
+                
+                if (action === 'update') {
+                    try {
+                        const contextData = JSON.parse(elements.contextData.value);
+                        requestBody.data = contextData;
+                    } catch (error) {
+                        alert('Invalid JSON for context data');
+                        return;
+                    }
+                }
+                
+                const response = await fetch(`${getBaseUrl()}/api/v1/context/${getUserId()}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                displayResponse(data);
+                
+                if (action === 'clear') {
+                    // Clear local message history
+                    state.messages = [];
+                    elements.messageList.innerHTML = '';
+                }
+                
+            } catch (error) {
+                console.error('Error executing context action:', error);
+                displayResponse({ error: error.message });
+            }
+        }
+        
+        // Update UI based on context action
+        function updateContextUI() {
+            const action = elements.contextAction.value;
+            elements.updateContextDiv.style.display = action === 'update' ? 'block' : 'none';
+        }
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            elements.sendMessageBtn.addEventListener('click', sendChatMessage);
+            elements.getToolsBtn.addEventListener('click', loadTools);
+            elements.executeToolBtn.addEventListener('click', executeTool);
+            elements.clearContextBtn.addEventListener('click', clearContext);
+            elements.getContextBtn.addEventListener('click', getContext);
+            elements.contextActionBtn.addEventListener('click', executeContextAction);
+            elements.contextAction.addEventListener('change', updateContextUI);
+            
+            // Allow pressing Enter in the message input
+            elements.userMessage.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendChatMessage();
+                }
+            });
+            
+            // Initial UI setup
+            updateContextUI();
+            
+            // Update userId when changed
+            elements.userId.addEventListener('change', () => {
+                state.userId = elements.userId.value.trim();
+            });
+        });
+    </script>
+</body>
+</html>
